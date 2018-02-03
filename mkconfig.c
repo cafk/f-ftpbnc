@@ -17,6 +17,7 @@
 #include "f-ftpbnc.h"
 
 #define ENCKEYLEN 	256
+#define IPV6 0
 
 int readoption(const char *quest, char *dest, int destlen)
 {
@@ -41,13 +42,23 @@ int readoption(const char *quest, char *dest, int destlen)
 
 int checkhostname(const char *hostname)
 {
+#ifdef IPV6
+    struct in6_addr ia;
+    struct hostent *he;
+
+    if (inet_pton(AF_INET6, hostname, &ia)) {
+        return 2;
+    }
+
+#else
     struct in_addr ia;
     struct hostent *he;
 
     if (inet_aton(hostname, &ia)) {
 	return 2;
     }
-     
+
+#endif
     he = gethostbyname(hostname);
     if (he != NULL) return 1;
 

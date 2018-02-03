@@ -34,6 +34,12 @@ extern char **environ;
 #define TIMEOUT_CONNECTING	30 * TIMER_MULTIPLY
 #define TIMEOUT_CONNECTED	3*3600 * TIMER_MULTIPLY
 
+#define IPV6
+#ifdef IPV6
+  #include <net/if.h>
+#endif
+//#undef IPV6
+
 /* #define DEBUG_SELECT */
 /* #define DEBUG_DATA */
 /* #define DEBUG_MEMBUFF */
@@ -212,8 +218,11 @@ int net_newsocket()
 
     pe = getprotobyname("tcp");
     tcpprotonum = pe ? pe->p_proto : 6;
-
+#ifdef IPV6
+    socketnum = socket(AF_INET6, SOCK_STREAM, tcpprotonum);
+#else
     socketnum = socket(AF_INET, SOCK_STREAM, tcpprotonum);
+#endif
     if (socketnum == -1) {
 	aprintferrno("Cannot allocate new socket");
 	return -1;
@@ -254,7 +263,22 @@ int net_newsocket()
 
     return socketnum;
 }
+#ifdef IPV6
+void net_resolvehost(const char *host, struct in6_addr *ia)
+{
+    struct hostent *he;
 
+    if (inet_pton(AF_INET6, host, ia)) {
+    }
+
+    he = gethostbyname(host);
+    if (he == NULL) {
+    } else {
+        memcpy(ia->s6_addr, he->h_addr, he->h_length);
+    }
+}
+
+#else
 unsigned long net_resolvehost(const char *host)
 {
     struct in_addr ia;
@@ -271,9 +295,51 @@ unsigned long net_resolvehost(const char *host)
 	return *(unsigned long *)he->h_addr;
     }
 }
+#endif
 
 int net_bindsocket(int fd, const char *ip, unsigned short port)
 {
+#ifdef IPV6
+    struct sockaddr_in6  sa;
+
+    sa.sin6_family = AF_INET6;
+    sa.sin6_port = htons(port);
+
+    sa.sin6_scope_id=if_nametoindex("eth0");
+
+    if (ip != NULL) {
+        if (strncmp(ip,"*", 2) == 0) {
+            sa.sin6_addr = in6addr_any;
+        } else {
+            struct in6_addr si;
+            net_resolvehost(ip, &si);
+            memcpy(&sa.sin6_addr.s6_addr[0], &si.s6_addr[0], sizeof(si.s6_addr[0]));
+            memcpy(&sa.sin6_addr.s6_addr[1], &si.s6_addr[1], sizeof(si.s6_addr[0]));
+            memcpy(&sa.sin6_addr.s6_addr[2], &si.s6_addr[2], sizeof(si.s6_addr[0]));
+            memcpy(&sa.sin6_addr.s6_addr[3], &si.s6_addr[3], sizeof(si.s6_addr[0]));
+            memcpy(&sa.sin6_addr.s6_addr[4], &si.s6_addr[4], sizeof(si.s6_addr[0]));
+            memcpy(&sa.sin6_addr.s6_addr[5], &si.s6_addr[5], sizeof(si.s6_addr[0]));
+            memcpy(&sa.sin6_addr.s6_addr[6], &si.s6_addr[6], sizeof(si.s6_addr[0]));
+            memcpy(&sa.sin6_addr.s6_addr[7], &si.s6_addr[7], sizeof(si.s6_addr[0]));
+            memcpy(&sa.sin6_addr.s6_addr[8], &si.s6_addr[8], sizeof(si.s6_addr[0]));
+            memcpy(&sa.sin6_addr.s6_addr[9], &si.s6_addr[9], sizeof(si.s6_addr[0]));
+            memcpy(&sa.sin6_addr.s6_addr[10], &si.s6_addr[10], sizeof(si.s6_addr[0]));
+            memcpy(&sa.sin6_addr.s6_addr[11], &si.s6_addr[11], sizeof(si.s6_addr[0]));
+            memcpy(&sa.sin6_addr.s6_addr[12], &si.s6_addr[12], sizeof(si.s6_addr[0]));
+            memcpy(&sa.sin6_addr.s6_addr[13], &si.s6_addr[13], sizeof(si.s6_addr[0]));
+            memcpy(&sa.sin6_addr.s6_addr[14], &si.s6_addr[14], sizeof(si.s6_addr[0]));
+            memcpy(&sa.sin6_addr.s6_addr[15], &si.s6_addr[15], sizeof(si.s6_addr[0]));
+
+            if (!(sa.sin6_addr.s6_addr)) {
+                  aprintferrno("Cannot resolve host");
+                  return 0;
+            }
+        }
+    } else {
+        sa.sin6_addr = in6addr_any;
+    }
+
+#else
     struct sockaddr_in	sa;
 
     sa.sin_family = AF_INET;
@@ -292,17 +358,49 @@ int net_bindsocket(int fd, const char *ip, unsigned short port)
     else {
 	sa.sin_addr.s_addr = htonl(INADDR_ANY);
     }
-
-    if (bind(fd, (struct sockaddr *)&sa, sizeof(struct sockaddr)) != 0) {
+#endif
+    if (bind(fd, (struct sockaddr *)&sa, sizeof(sa)) != 0) {
 	aprintferrno("Cannot bind socket");
 	return 0;
     }
-
     return 1;
 }
 
 int net_connect(int fd, const char *ip, unsigned short port)
 {
+#ifdef IPV6
+    struct sockaddr_in6  sa;
+    int r;
+
+    sa.sin6_family = AF_INET6;
+    sa.sin6_port = htons(port);
+    struct in6_addr si;
+    net_resolvehost(ip, &si);
+    ///XXX: nothing is more permanent than a quick and dirty fix.
+    memcpy(&sa.sin6_addr.s6_addr[0], &si.s6_addr[0], sizeof(si.s6_addr[0]));
+    memcpy(&sa.sin6_addr.s6_addr[1], &si.s6_addr[1], sizeof(si.s6_addr[0]));
+    memcpy(&sa.sin6_addr.s6_addr[2], &si.s6_addr[2], sizeof(si.s6_addr[0]));
+    memcpy(&sa.sin6_addr.s6_addr[3], &si.s6_addr[3], sizeof(si.s6_addr[0]));
+    memcpy(&sa.sin6_addr.s6_addr[4], &si.s6_addr[4], sizeof(si.s6_addr[0]));
+    memcpy(&sa.sin6_addr.s6_addr[5], &si.s6_addr[5], sizeof(si.s6_addr[0]));
+    memcpy(&sa.sin6_addr.s6_addr[6], &si.s6_addr[6], sizeof(si.s6_addr[0]));
+    memcpy(&sa.sin6_addr.s6_addr[7], &si.s6_addr[7], sizeof(si.s6_addr[0]));
+    memcpy(&sa.sin6_addr.s6_addr[8], &si.s6_addr[8], sizeof(si.s6_addr[0]));
+    memcpy(&sa.sin6_addr.s6_addr[9], &si.s6_addr[9], sizeof(si.s6_addr[0]));
+    memcpy(&sa.sin6_addr.s6_addr[10], &si.s6_addr[10], sizeof(si.s6_addr[0]));
+    memcpy(&sa.sin6_addr.s6_addr[11], &si.s6_addr[11], sizeof(si.s6_addr[0]));
+    memcpy(&sa.sin6_addr.s6_addr[12], &si.s6_addr[12], sizeof(si.s6_addr[0]));
+    memcpy(&sa.sin6_addr.s6_addr[13], &si.s6_addr[13], sizeof(si.s6_addr[0]));
+    memcpy(&sa.sin6_addr.s6_addr[14], &si.s6_addr[14], sizeof(si.s6_addr[0]));
+    memcpy(&sa.sin6_addr.s6_addr[15], &si.s6_addr[15], sizeof(si.s6_addr[0]));
+
+    if (!(sa.sin6_addr.s6_addr)) {
+//    if (!(*sa.sin6_addr.s6_addr = net_resolvehost(ip))) {
+        aprintferrno("Cannot resolve host");
+        return 0;
+    }
+
+#else
     struct sockaddr_in	sa;
     int r;
 
@@ -313,8 +411,9 @@ int net_connect(int fd, const char *ip, unsigned short port)
 	aprintferrno("Cannot resolve host");
 	return 0;
     }
-
+#endif
     r = connect(fd, (struct sockaddr *) &sa, sizeof (sa));
+
     if (r < 0 && errno == EINPROGRESS) {
 	return 2;
     }
@@ -332,18 +431,27 @@ const char *get_destinationip_cached()
     static struct hostent *he = NULL;
 
     int timenow = time(NULL);
+#ifdef IPV6
+    struct in6_addr ia;
+#else
     struct in_addr ia;
+#endif
     struct hostent *he_new;
 
     if (cfgisip) return config->desthostname;
 
     if (lastresolv + config->destresolvetime <= timenow) {
-
+#ifdef IPV6
+        if (inet_pton(AF_INET6,config->desthostname, &ia)) {
+            cfgisip = 1;
+            return config->desthostname;
+        }
+#else
 	if (inet_aton(config->desthostname, &ia)) {
 	    cfgisip = 1;
 	    return config->desthostname;
 	}
-
+#endif
 	aprintf("Resolving hostname %s", config->desthostname);
 	he_new = gethostbyname(config->desthostname);
 	if (he_new != NULL) {
@@ -353,8 +461,15 @@ const char *get_destinationip_cached()
     }     
 
     if (!he) return NULL;
-
+#ifdef IPV6
+    char buf6[INET6_ADDRSTRLEN];
+    inet_ntop(AF_INET6, he->h_addr, buf6, sizeof(buf6));
+    //return inet_ntop(AF_INET6, *(struct in6_addr *)he->h_addr);
+    const char *retVal = (const char*)buf6;
+    return retVal;
+#else
     return inet_ntoa(*(struct in_addr *)he->h_addr);
+#endif
 }
 
 /***
