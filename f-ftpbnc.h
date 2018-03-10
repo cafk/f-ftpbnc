@@ -2,18 +2,23 @@
    containing structures needed by mkconfig */
 /* $Rev: 421 $ $Date: 2008-01-30 22:56:40 +0100 (Wed, 30 Jan 2008) $ */
 
+typedef enum { false, true } bool;
+
 struct CONFIG {
 
      char	signature[12];
 
      char	configname[64];
+     bool	useipv6;
 
      char	localip[64];
+     char	localip6[64];
      int	localport;
 
      char	desthostname[64];
      int	destport;
      char	destbindip[256];
+     char	destbindip6[256];
      int	destresolvetime;
 
      int	ident;

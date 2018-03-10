@@ -306,69 +306,84 @@ int main()
 
     f = fopen("inc-config.h", "r");
     if (f) {
-	printf("Reading defaults from inc-config.h\n");
-	readconfig(f, &cfg, enckey);
-	printf("\n");
-	fclose(f);
+      printf("Reading defaults from inc-config.h\n");
+      readconfig(f, &cfg, enckey);
+      printf("\n");
+      fclose(f);
     }
 
     printf("1) Configuration name\n");
     printf("   This is an arbitrary string, which is shown when the bnc is started. \n");
     printf("   Just for you if you have multiple bncs on one machine.\n\n");
-
+    
     readoption("Configuration name:", cfg.configname, sizeof(cfg.configname));
     printf("\n");
+    
+    printf("2) Use IPv6[Y/n]\n");
+    printf("   This is a boolean value, which expands the configuration to \n");
+    printf("   also cover IPv6 address ranges The bnc host and target ftp\n");
+    printf("   must support both in this case.\n\n");
 
-    printf("2) Local IP\n");
-    printf("   This can either be * or one of the ips on your maschine.\n");
+    printf("3) Local IPv4\n");
+    printf("   This can either be * or one of the IPv4s on your maschine.\n");
     printf("   Useful only if you have a box with multiple ips eg for vhosts and\n");
     printf("   you wish to pick a specific one.\n\n");
 
     if (!*cfg.localip) strcpy(cfg.localip,"*");
 
-    readoption("Local IP:", cfg.localip, sizeof(cfg.localip));
+    readoption("Local IPv4:", cfg.localip, sizeof(cfg.localip));
+    printf("\n");
+    
+    printf("3a) Local IPv6\n");
+    printf("   This can either be * or one of the IPv6s on your maschine.\n");
+    printf("   Useful only if you have a box with multiple ips eg for vhosts and\n");
+    printf("   you wish to pick a specific one.\n\n");
+
+    if (!*cfg.localip6) strcpy(cfg.localip6,"*");
+
+    readoption("Local IPv6:", cfg.localip6, sizeof(cfg.localip6));
     printf("\n");
 
-    printf("3) Local Port\n");
+    printf("4) Local Port\n");
     printf("   Important setting: the port to listen to on the ip above.\n");
     printf("   As always ports < 1024 need root access to use, so pick a large one.\n");
     printf("   Note: Ports >= 65536 don't exist.\n\n");
 
     do {
-	sprintf(buff, "%d", cfg.localport);
-	readoption("Local Port:", buff, sizeof(buff));
-	cfg.localport = strtol(buff, &endptr, 10);
+      sprintf(buff, "%d", cfg.localport);
+      readoption("Local Port:", buff, sizeof(buff));
+      cfg.localport = strtol(buff, &endptr, 10);
     }
     while(*endptr != 0 || cfg.localport < 23 || cfg.localport > 65535);
     printf("\n");
 
-    printf("4) Destination Host\n");
+    printf("5) Destination Host\n");
     printf("   Important setting: the dns hostname or ip of the glftpd\n");
     printf("   site to which to bounce connections to. This can be a dns name,\n");
     printf("   in which case you can specify a dns-reload time below.\n\n");
 
     do {
-	readoption("Destination Host:", cfg.desthostname, sizeof(cfg.desthostname));
+      readoption("Destination Host:", cfg.desthostname, sizeof(cfg.desthostname));
     } while (!checkhostname(cfg.desthostname));
     printf("\n");
 
-    printf("5) Destination Port\n");
+    printf("6) Destination Port\n");
     printf("   Important setting: the port of the destination hosts on which \n");
     printf("   glftpd is running.\n\n");
 
     do {
-	sprintf(buff, "%d", cfg.destport);
-	readoption("Destination Port:", buff, sizeof(buff));
-	cfg.destport = strtol(buff, &endptr, 10);
+      sprintf(buff, "%d", cfg.destport);
+      readoption("Destination Port:", buff, sizeof(buff));
+      cfg.destport = strtol(buff, &endptr, 10);
     }
     while(*endptr != 0 || cfg.destport < 10 || cfg.destport > 65535);
     printf("\n");
 
     if (checkhostname(cfg.desthostname) == 1) {
-	printf("6) Destination DNS Resolve Time\n");
-	printf("   DNS resolving is always slow and hinders performance, so the bnc will reuse\n");
-	printf("   the resolved ip for this period of time. The value is in seconds.\n");
-	printf("   If you dont know what this is leave 3600 = 1 hour.\n\n");
+      printf("7) Destination DNS Resolve Time\n");
+      printf("   DNS resolving is always slow and hinders performance, so the bnc will reuse\n");
+      printf("   the resolved ip for this period of time. The value is in seconds.\n");
+      printf("   If you dont know what this is leave 3600 = 1 hour.\n\n");
 
 	if (cfg.destresolvetime == 0) cfg.destresolvetime = 3600;
 
@@ -381,11 +396,11 @@ int main()
 	printf("\n");
     }
     else {
-	printf("6) Destination DNS Resolve Time. Skipped because destination host is an ip.\n\n");
+	printf("7) Destination DNS Resolve Time. Skipped because destination host is an ip.\n\n");
 	cfg.destresolvetime = 3600;
     }
 
-    printf("7) Request and send ident\n");
+    printf("8) Request and send ident\n");
     printf("   Usually the bnc requests the ident from the connecting client's ip. The \n");
     printf("   value is forwarded to the server glftpd for checking against the userdb.\n");
     printf("   You can disable this and turn f-ftpbnc into a pure port forwarder.\n\n");
@@ -399,7 +414,7 @@ int main()
 
     cfg.ident = (*buff == 'y');
 
-    printf("8) Destination Bind IP\n");
+    printf("9) Destination Bind IP\n");
     printf("   When connecting to the destination host, use this _local_ interface.\n");
     printf("   Only useful on boxes with multiple ips. Normally keep * = default interface\n\n");
 
@@ -407,7 +422,7 @@ int main()
     readoption("Bind IP towards Destination:", cfg.destbindip, sizeof(cfg.destbindip));
     printf("\n");
 
-    printf("9) Hammer Protection\n");
+    printf("10) Hammer Protection\n");
     printf("   This will enable hammer protection in the bnc: An ip can only connect\n");
     printf("   to the bnc x times within y seconds. All following connection requests\n");
     printf("   will immediately be dropped without contacting the site.\n");
@@ -421,7 +436,7 @@ int main()
     while(sscanf(buff, "%d:%d", &cfg.hammercount, &cfg.hammertime) != 2);
     printf("\n");
 
-    printf("10) Status in ps\n");
+    printf("11) Status in ps\n");
     printf("    The bnc can be configed to change its proc title in a ps listing. This \n");
     printf("    can be used to a static text of e.g. another executable's name. Or it can\n");
     printf("    be used to display the current number of connections the bnc is serving.\n\n");
@@ -433,7 +448,7 @@ int main()
     while(strcmp(buff,"n") != 0 && strcmp(buff,"y") != 0);
 
     if (*buff == 'y') {
-	printf("10a) Proctitle text\n");
+	printf("12a) Proctitle text\n");
 	printf("     The text for the proc title. Use may use %%d to insert the current \n");
 	printf("     number of clients in the text. Use only one %%d and no other replacements.\n");
 	printf("     Otherwise the bnc will crash!\n\n");
@@ -450,7 +465,7 @@ int main()
 
     printf("\n");
 
-    printf("11) Configuration Encryption Type\n");
+    printf("12) Configuration Encryption Type\n");
     printf("    f-ftpbnc will always compile its configuration into the binary. This\n");
     printf("    means it does not need a bnc.conf lying around. The configuration block\n");
     printf("    inside the binary program image is encrypted with xTEA.\n");
@@ -506,9 +521,11 @@ int main()
 
     printf("Configuration Summary:\n\n");
     printf("Name: %s\n", cfg.configname);
-    printf("Local IP and Port: %s:%d\n", cfg.localip, cfg.localport);
+    printf("Local IPv4 and Port: %s:%d\n", cfg.localip, cfg.localport);
+    printf("Local IPv6 and Port: %s:%d\n", cfg.localip6, cfg.localport);
     printf("Destination: %s:%d\n", cfg.desthostname, cfg.destport);
-    printf("Destination Bind IP: %s\n", cfg.destbindip);
+    printf("Destination Bind IPv4: %s\n", cfg.destbindip);
+    printf("Destination Bind IPv6: %s\n", cfg.destbindip6);
     printf("Destination DNS Resolve Time: %d\n", cfg.destresolvetime);
     printf("Hammer Protection: %d:%d\n", cfg.hammercount, cfg.hammertime);
     if (cfg.enctype == 1) {
